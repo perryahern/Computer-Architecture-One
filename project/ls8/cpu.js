@@ -57,7 +57,7 @@ class CPU {
     alu(op, regA, regB) {
         switch (op) {
             case 'MUL':
-                // !!! IMPLEMENT ME
+                return this.reg[regA] * this.reg[regB];
                 break;
         }
     }
@@ -98,7 +98,8 @@ class CPU {
             console.log(this.reg[operandA]);
         };    
         const handle_MUL = (operandA, operandB) => {
-            this.reg[operandA] = this.reg[operandA] * this.reg[operandB];
+            // this.reg[operandA] = this.reg[operandA] * this.reg[operandB];
+            this.reg[operandA] = this.alu('MUL', operandA, operandB);
         };    
         const handle_HLT = () => this.stopClock();
 
