@@ -70,7 +70,6 @@ class CPU {
         // from the memory address pointed to by the PC. (I.e. the PC holds the
         // index into memory of the next instruction.)
 
-        // !!! IMPLEMENT ME
         let IR = this.ram.read(this.reg.PC);
 
         // Debugging output
@@ -79,22 +78,32 @@ class CPU {
         // Get the two bytes in memory _after_ the PC in case the instruction
         // needs them.
 
-        // !!! IMPLEMENT ME
         let operandA = this.ram.read(this.reg.PC + 1);
         let operandB = this.ram.read(this.reg.PC + 2);
 
         // Execute the instruction. Perform the actions for the instruction as
         // outlined in the LS-8 spec.
 
-        // !!! IMPLEMENT ME
+        const LDI = 0b10011001;
+        const PRN = 0b01000011;
+        const MUL = 0b10101010;
+        const HLT = 0b00000001;
+
         switch (IR) {
-            case 0b10011001:  // LDI
+            case LDI:
               this.reg[operandA] = operandB;
               break;
-            case 0b01000011:  // PRN
+            case PRN:
               console.log(this.reg[operandA]);
               break;
-            case 0b00000001:  // HLT
+            case MUL:
+              this.reg[operandA] = this.reg[operandA] * this.reg[operandB];
+              break;
+            case HLT:
+              this.stopClock();
+              break;
+            default:
+              console.log(`${IR.toString(2)} is not a valid instruction, halting operation.`);
               this.stopClock();
               break;
         }
