@@ -84,29 +84,44 @@ class CPU {
         // Execute the instruction. Perform the actions for the instruction as
         // outlined in the LS-8 spec.
 
+        // mnemonics for the instructions
         const LDI = 0b10011001;
         const PRN = 0b01000011;
         const MUL = 0b10101010;
         const HLT = 0b00000001;
 
-        switch (IR) {
-            case LDI:
-              this.reg[operandA] = operandB;
-              break;
-            case PRN:
-              console.log(this.reg[operandA]);
-              break;
-            case MUL:
-              this.reg[operandA] = this.reg[operandA] * this.reg[operandB];
-              break;
-            case HLT:
-              this.stopClock();
-              break;
-            default:
-              console.log(`${IR.toString(2)} is not a valid instruction, halting operation.`);
-              this.stopClock();
-              break;
-        }
+        // handlers for the functionality of each instruction
+        const handle_LDI = (operandA, operandB) => {
+            this.reg[operandA] = operandB;
+        };    
+        const handle_PRN = (operandA) => {
+            console.log(this.reg[operandA]);
+        };    
+        const handle_MUL = (operandA, operandB) => {
+            this.reg[operandA] = this.reg[operandA] * this.reg[operandB];
+        };    
+        const handle_HLT = () => this.stopClock();
+
+        // handler for invalid instruction
+        const handle_invalid_instruction = (instruction) => {
+            console.log(`${instruction.toString(2)} is not a valid instruction; halting operation.`);
+            handle_HLT();
+        };    
+
+        // branch table to pair mnemonics with functions
+        const branchTable = {
+            [LDI]: handle_LDI,
+            [PRN]: handle_PRN,
+            [MUL]: handle_MUL,
+            [HLT]: handle_HLT,
+        };
+
+        // call the function if it is in the branch table or handle invalid instruction
+        if (Object.keys(branchTable).includes(IR.toString())) {
+            branchTable[IR](operandA, operandB);
+        } else {
+            handle_invalid_instruction(IR);
+        };
 
         // Increment the PC register to go to the next instruction. Instructions
         // can be 1, 2, or 3 bytes long. Hint: the high 2 bits of the
