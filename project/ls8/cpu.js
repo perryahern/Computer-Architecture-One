@@ -60,6 +60,9 @@ class CPU {
             case 'MUL':
                 return this.reg[regA] * this.reg[regB];
                 break;
+            case 'ADD':
+                return this.reg[regA] + this.reg[regB];
+                break;
         };
     };
 
@@ -89,25 +92,38 @@ class CPU {
         const LDI = 0b10011001;
         const PRN = 0b01000011;
         const MUL = 0b10101010;
+        const ADD = 0b10101000;
         const PUSH = 0b01001101;
         const POP = 0b01001100;
+        const CALL = 0b01001000;
+        const RET = 0b00001001;
         const HLT = 0b00000001;
 
         // handlers for the functionality of each instruction
-        const handle_LDI = (operandA, operandB) => {
-            this.reg[operandA] = operandB;
+        const handle_LDI = (register, value) => {
+            this.reg[register] = value;
         };    
-        const handle_PRN = (operandA) => {
-            console.log(this.reg[operandA]);
+        const handle_PRN = (register) => {
+            console.log(this.reg[register]);
         };    
-        const handle_MUL = (operandA, operandB) => {
-            this.reg[operandA] = this.alu('MUL', operandA, operandB);
+        const handle_MUL = (registerA, registerB) => {
+            this.reg[registerA] = this.alu('MUL', registerA, registerB);
         };
-        const handle_PUSH = (operandA) => {
-            this.ram.write(--this.reg[7], this.reg[operandA]);
+        const handle_ADD = (registerA, registerB) => {
+            this.reg[registerA] = this.alu('ADD', registerA, registerB);
         };
-        const handle_POP = (operandA) => {
-            this.reg[operandA] = this.ram.read(this.reg[7]++);
+        const handle_PUSH = (register) => {
+            this.ram.write(--this.reg[7], this.reg[register]);
+        };
+        const handle_POP = (register) => {
+            this.reg[register] = this.ram.read(this.reg[7]++);
+        };
+        const handle_CALL = (register) => {
+            this.ram.write(--this.reg[7], this.reg.PC + 2);
+            this.reg.PC = this.reg[register];
+        };
+        const handle_RET = () => {
+            this.reg.PC = this.ram.read(this.reg[7]++);
         };
         const handle_HLT = () => this.stopClock();
 
@@ -122,8 +138,11 @@ class CPU {
             [LDI]: handle_LDI,
             [PRN]: handle_PRN,
             [MUL]: handle_MUL,
+            [ADD]: handle_ADD,
             [PUSH]: handle_PUSH,
             [POP]: handle_POP,
+            [CALL]: handle_CALL,
+            [RET]: handle_RET,
             [HLT]: handle_HLT,
         };
 
@@ -138,9 +157,14 @@ class CPU {
         // can be 1, 2, or 3 bytes long. Hint: the high 2 bits of the
         // instruction byte tells you how many bytes follow the instruction byte
         // for any particular instruction.
-        
-        // !!! IMPLEMENT ME
-        this.reg.PC += (IR >>> 6) + 1;
+        switch (IR) {
+            case CALL:
+            case RET:
+              break;
+            default:
+              this.reg.PC += (IR >>> 6) + 1;
+              break;
+        }
     };
 };
 
