@@ -17,14 +17,15 @@ class CPU {
         
         // Special-purpose registers
         this.reg.PC = 0; // Program Counter
-    }
+        this.reg[7] = 0xF4; // Stack Pointer
+    };
 	
     /**
      * Store value in memory address, useful for program loading
      */
     poke(address, value) {
         this.ram.write(address, value);
-    }
+    };
 
     /**
      * Starts the clock ticking on the CPU
@@ -35,14 +36,14 @@ class CPU {
         this.clock = setInterval(() => {
             _this.tick();
         }, 1); // 1 ms delay == 1 KHz clock == 0.000001 GHz
-    }
+    };
 
     /**
      * Stops the clock
      */
     stopClock() {
         clearInterval(this.clock);
-    }
+    };
 
     /**
      * ALU functionality
@@ -59,8 +60,8 @@ class CPU {
             case 'MUL':
                 return this.reg[regA] * this.reg[regB];
                 break;
-        }
-    }
+        };
+    };
 
     /**
      * Advances the CPU one cycle
@@ -88,6 +89,8 @@ class CPU {
         const LDI = 0b10011001;
         const PRN = 0b01000011;
         const MUL = 0b10101010;
+        const PUSH = 0b01001101;
+        const POP = 0b01001100;
         const HLT = 0b00000001;
 
         // handlers for the functionality of each instruction
@@ -98,9 +101,14 @@ class CPU {
             console.log(this.reg[operandA]);
         };    
         const handle_MUL = (operandA, operandB) => {
-            // this.reg[operandA] = this.reg[operandA] * this.reg[operandB];
             this.reg[operandA] = this.alu('MUL', operandA, operandB);
-        };    
+        };
+        const handle_PUSH = (operandA) => {
+            this.ram.write(--this.reg[7], this.reg[operandA]);
+        };
+        const handle_POP = (operandA) => {
+            this.reg[operandA] = this.ram.read(this.reg[7]++);
+        };
         const handle_HLT = () => this.stopClock();
 
         // handler for invalid instruction
@@ -114,6 +122,8 @@ class CPU {
             [LDI]: handle_LDI,
             [PRN]: handle_PRN,
             [MUL]: handle_MUL,
+            [PUSH]: handle_PUSH,
+            [POP]: handle_POP,
             [HLT]: handle_HLT,
         };
 
@@ -131,7 +141,7 @@ class CPU {
         
         // !!! IMPLEMENT ME
         this.reg.PC += (IR >>> 6) + 1;
-    }
-}
+    };
+};
 
 module.exports = CPU;
