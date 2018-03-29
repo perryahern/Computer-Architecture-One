@@ -99,6 +99,8 @@ class CPU {
         const RET = 0b00001001;
         const HLT = 0b00000001;
 
+        const SP = 7;
+
         // handlers for the functionality of each instruction
         const handle_LDI = (register, value) => {
             this.reg[register] = value;
@@ -113,17 +115,23 @@ class CPU {
             this.reg[registerA] = this.alu('ADD', registerA, registerB);
         };
         const handle_PUSH = (register) => {
-            this.ram.write(--this.reg[7], this.reg[register]);
+            this.ram.write(--this.reg[SP], this.reg[register]);
+        };
+        const handle_PUSHval = (value) => {
+            this.ram.write(--this.reg[SP], value);
+        };
+        const handle_POPval = () => {
+            return this.ram.read(this.reg[SP]++);
         };
         const handle_POP = (register) => {
-            this.reg[register] = this.ram.read(this.reg[7]++);
+            this.reg[register] = handle_POPval();
         };
         const handle_CALL = (register) => {
-            this.ram.write(--this.reg[7], this.reg.PC + 2);
+            handle_PUSHval(this.reg.PC + 2);
             this.reg.PC = this.reg[register];
         };
         const handle_RET = () => {
-            this.reg.PC = this.ram.read(this.reg[7]++);
+            this.reg.PC = handle_POPval();
         };
         const handle_HLT = () => this.stopClock();
 
@@ -164,7 +172,7 @@ class CPU {
             default:
               this.reg.PC += (IR >>> 6) + 1;
               break;
-        }
+        };
     };
 };
 
