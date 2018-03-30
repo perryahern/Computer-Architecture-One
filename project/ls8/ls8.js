@@ -38,6 +38,7 @@ function processProgram(arr, cpu) {
     cpu.poke(i, parseInt(arr[i], 2));
   }
   cpu.startClock();
+  cpu.startTimer();
 }
 
 /**

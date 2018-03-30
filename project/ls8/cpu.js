@@ -33,10 +33,6 @@ class CPU {
      * Starts the clock ticking on the CPU
      */
     startClock() {
-        // this.timer = setInterval(() => {
-        //     this.reg[6] = 0b00000001;
-        // }, 1000);
-
         this.clock = setInterval(() => {
             this.tick();
         }, 1); // 1 ms delay == 1 KHz clock == 0.000001 GHz
@@ -47,6 +43,16 @@ class CPU {
      */
     stopClock() {
         clearInterval(this.clock);
+    };
+
+    startTimer() {
+        this.timer = setInterval(() => {
+            this.reg[6] = 0b00000001;
+        }, 1000);
+    };
+
+    stopTimer() {
+        clearInterval(this.timer);
     };
 
     /**
@@ -75,31 +81,21 @@ class CPU {
      */
     tick() {
         const interrupt_general = () => {
-        // viewing high RAM to test
-            for (let i = 255; i > 234; i--) {
-                console.log(`ram index ${i}: `, this.ram.read(i));
-            };
-            console.log('----------');
-            console.log('PC: ', this.reg.PC);
-            for (let i = 0; i < 8; i++) {
-                console.log(`register ${i}: `, this.reg[i]);
-            };
-            console.log('----------');
-            
             // disable interrupts
+            this.stopTimer();
 
             // clear the bit
-            // this.reg[6] = this.reg[6] & 0b11111110;
-            this.reg[6] = 0;
+            this.reg[6] = this.reg[6] & 0b11111110;
+            // this.reg[6] = 0;
 
             // push PC register onto stack
             handle_PUSHval(this.reg.PC);
             
             // push FL register onto stack
-                // FL register not implemented yet
+            handle_PUSHval(this.reg.FL);
             
             // push R0 to R6 onto stack in order
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 7; i++) {
                 handle_PUSHval(this.reg[i]);
             };
 
@@ -108,13 +104,9 @@ class CPU {
             // set PC to the handler address
             this.reg.PC = this.ram.read(0xF8);
 
-        // viewing high ram to test   
-            console.log('end of int general, PC: ', this.reg.PC);
-            for (let i = 255; i > 234; i--) {
-                console.log(`ram index ${i}: `, this.ram.read(i));
-            };
-            console.log('----------');
+            this.advancePC = false;
         };
+
         // Load the instruction register (IR--can just be a local variable here)
         // from the memory address pointed to by the PC. (I.e. the PC holds the
         // index into memory of the next instruction.)
@@ -138,6 +130,7 @@ class CPU {
         const CALL = 0b01001000;
         const CMP = 0b10100000;
         const HLT = 0b00000001;
+        const IRET = 0b00001011;
         const JEQ = 0b01010001;
         const JGT = 0b01010100;
         const JLT = 0b01010011;
@@ -152,21 +145,21 @@ class CPU {
         const RET = 0b00001001;
         const ST = 0b10011010;
 
-        // mnemonics for interrupt table
-        const TIMER = 0b00000001;
-
         // special variables
         const SP = 7;   // Stack Pointer
         const IS = 6;   // Interrupt Status
+        const advancePC = true;
 
         // OpCode handling functions and helpers
         const handle_ADD = (registerA, registerB) => {
             this.reg[registerA] = this.alu('ADD', registerA, registerB);
+            this.advancePC = true;
         };
         
         const handle_CALL = (register) => {
             handle_PUSHval(this.reg.PC + 2);
             this.reg.PC = this.reg[register];
+            this.advancePC = false;
         };
 
         const handle_CMP = (registerA, registerB) => {
@@ -181,9 +174,34 @@ class CPU {
                     this.reg.FL = 0b00000100;
                     break;
             };
+            this.advancePC = true;
         };
         
-        const handle_HLT = () => this.stopClock();
+        const handle_HLT = () => {
+            this.stopClock();
+            clearInterval(this.timer);
+        };
+
+        const handle_IRET = () => {
+            // pop R6 to R0 off the stack in order
+            for (let i = 6; i >= 0; i--) {
+                this.reg[i] = handle_POPval();
+            };
+
+            // pop FL register off the stack
+            this.reg.FL = handle_POPval();
+
+            // pop PC off the stack
+            this.reg.PC = handle_POPval();
+
+            // enable interrupts
+            this.startTimer();
+
+            // do next instruction
+            IR = this.ram.read(this.reg.PC);
+
+            this.advancePC = false;
+        };
 
         const handle_JEQ = (register) => {
             if (this.reg.FL === 0b00000001) {
@@ -261,11 +279,6 @@ class CPU {
             this.ram.write(this.reg[registerA], this.reg[registerB]);
         };
 
-        // const interrupt_timer = () => {
-        //     console.log('Timer interrupt!');
-        //     this.reg[IS] = 0;
-        // };
-
         // handler for invalid instructions
         const handle_invalid_instruction = (instruction) => {
             console.log(`${instruction.toString(2)} is not a valid instruction; halting operation.`);
@@ -278,6 +291,7 @@ class CPU {
             [CALL]: handle_CALL,
             [CMP]: handle_CMP,
             [HLT]: handle_HLT,
+            [IRET]: handle_IRET,
             [JEQ]: handle_JEQ,
             [JGT]: handle_JGT,
             [JLT]: handle_JLT,
@@ -294,20 +308,10 @@ class CPU {
         };
 
 
-        // branch table for interrupts
-        // const interruptTable = {
-        //     [TIMER]: interrupt_timer,
-        // };
-
         // check to see if there are any interrupts
         if (this.reg[IS] !== 0) {
-            // >>>>>>>>>> PROBLEM TO FIX: this will only work for one interrupt at a time <<<<<<<<<<
-            // if (Object.keys(interruptTable).includes(this.reg[IS].toString())) {
-            //     interruptTable[this.reg[IS]]();
-            // } else {
-            //     console.log('Interrupt table error');
-            // };
             interrupt_general();
+            IR = this.ram.read(this.reg.PC);
         };
 
         // call the function if it is in the branch table or handle invalid instruction
@@ -323,6 +327,7 @@ class CPU {
         // for any particular instruction.
         switch (IR) {
             case CALL:
+            case IRET:
             case JEQ:
             case JGT:
             case JLT:
@@ -331,7 +336,10 @@ class CPU {
             case RET:
               break;
             default:  // move PC for all commands that do not directly set it
-              this.reg.PC += (IR >>> 6) + 1;
+              if (this.advancePC) {
+                this.reg.PC += (IR >>> 6) + 1;
+              };
+              this.advancePC = true;
               break;
         };
     };
