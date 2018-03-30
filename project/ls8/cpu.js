@@ -17,6 +17,7 @@ class CPU {
         
         // Special-purpose registers
         this.reg.PC = 0; // Program Counter
+        this.reg.FL = 0; // Flags register
         this.reg[7] = 0xF4; // Stack Pointer
         this.reg[6] = 0;
     };
@@ -135,6 +136,7 @@ class CPU {
         // mnemonics for the instructions
         const ADD = 0b10101000;
         const CALL = 0b01001000;
+        const CMP = 0b10100000;
         const HLT = 0b00000001;
         const JMP = 0b01010000;
         const LDI = 0b10011001;
@@ -161,6 +163,20 @@ class CPU {
         const handle_CALL = (register) => {
             handle_PUSHval(this.reg.PC + 2);
             this.reg.PC = this.reg[register];
+        };
+
+        const handle_CMP = (registerA, registerB) => {
+            switch (true) {
+                case this.reg[registerA] === this.reg[registerB]:
+                    this.reg.FL = 0b00000001;
+                    break;
+                case this.reg[registerA] > this.reg[registerB]:
+                    this.reg.FL = 0b00000010;
+                    break;
+                case this.reg[registerA] < this.reg[registerB]:
+                    this.reg.FL = 0b00000100;
+                    break;
+            };
         };
         
         const handle_HLT = () => this.stopClock();
@@ -224,6 +240,7 @@ class CPU {
         const branchTable = {
             [ADD]: handle_ADD,
             [CALL]: handle_CALL,
+            [CMP]: handle_CMP,
             [HLT]: handle_HLT,
             [JMP]: handle_JMP,
             [LDI]: handle_LDI,
