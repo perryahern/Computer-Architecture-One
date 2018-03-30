@@ -32,9 +32,9 @@ class CPU {
      * Starts the clock ticking on the CPU
      */
     startClock() {
-        this.timer = setInterval(() => {
-            this.reg[6] = 0b00000001;
-        }, 1000);
+        // this.timer = setInterval(() => {
+        //     this.reg[6] = 0b00000001;
+        // }, 1000);
 
         this.clock = setInterval(() => {
             this.tick();
@@ -73,6 +73,47 @@ class CPU {
      * Advances the CPU one cycle
      */
     tick() {
+        const interrupt_general = () => {
+        // viewing high RAM to test
+            for (let i = 255; i > 234; i--) {
+                console.log(`ram index ${i}: `, this.ram.read(i));
+            };
+            console.log('----------');
+            console.log('PC: ', this.reg.PC);
+            for (let i = 0; i < 8; i++) {
+                console.log(`register ${i}: `, this.reg[i]);
+            };
+            console.log('----------');
+            
+            // disable interrupts
+
+            // clear the bit
+            // this.reg[6] = this.reg[6] & 0b11111110;
+            this.reg[6] = 0;
+
+            // push PC register onto stack
+            handle_PUSHval(this.reg.PC);
+            
+            // push FL register onto stack
+                // FL register not implemented yet
+            
+            // push R0 to R6 onto stack in order
+            for (let i = 0; i < 8; i++) {
+                handle_PUSHval(this.reg[i]);
+            };
+
+            // look up address of interrupt handler in interrupt vector table
+            
+            // set PC to the handler address
+            this.reg.PC = this.ram.read(0xF8);
+
+        // viewing high ram to test   
+            console.log('end of int general, PC: ', this.reg.PC);
+            for (let i = 255; i > 234; i--) {
+                console.log(`ram index ${i}: `, this.ram.read(i));
+            };
+            console.log('----------');
+        };
         // Load the instruction register (IR--can just be a local variable here)
         // from the memory address pointed to by the PC. (I.e. the PC holds the
         // index into memory of the next instruction.)
@@ -105,11 +146,14 @@ class CPU {
         const RET = 0b00001001;
         const ST = 0b10011010;
 
+        // mnemonics for interrupt table
+        const TIMER = 0b00000001;
+
         // special variables
         const SP = 7;   // Stack Pointer
         const IS = 6;   // Interrupt Status
 
-        // handlers for the functionality of each instruction
+        // OpCode handling functions and helpers
         const handle_ADD = (registerA, registerB) => {
             this.reg[registerA] = this.alu('ADD', registerA, registerB);
         };
@@ -165,24 +209,10 @@ class CPU {
             this.ram.write(this.reg[registerA], this.reg[registerB]);
         };
 
-        const interrupt_timer = () => {
-            console.log('Timer interrupt!');
-        };
-
-        // handler for interrupts
-        const handle_interrupt = (register) => {
-            const TIMER = 0b00000001;
-
-            // const interruptTable = {
-            //     [TIMER]: interrupt_timer,
-            // };
-            switch (register) {
-                case 0b00000001:
-                    console.log('Timer interrupt!');
-                    break;
-            };
-            this.reg[IS] = 0;
-        };
+        // const interrupt_timer = () => {
+        //     console.log('Timer interrupt!');
+        //     this.reg[IS] = 0;
+        // };
 
         // handler for invalid instructions
         const handle_invalid_instruction = (instruction) => {
@@ -206,9 +236,21 @@ class CPU {
             [ST]: handle_ST,
         };
 
+
+        // branch table for interrupts
+        // const interruptTable = {
+        //     [TIMER]: interrupt_timer,
+        // };
+
         // check to see if there are any interrupts
         if (this.reg[IS] !== 0) {
-            handle_interrupt(this.reg[IS]);
+            // >>>>>>>>>> PROBLEM TO FIX: this will only work for one interrupt at a time <<<<<<<<<<
+            // if (Object.keys(interruptTable).includes(this.reg[IS].toString())) {
+            //     interruptTable[this.reg[IS]]();
+            // } else {
+            //     console.log('Interrupt table error');
+            // };
+            interrupt_general();
         };
 
         // call the function if it is in the branch table or handle invalid instruction
