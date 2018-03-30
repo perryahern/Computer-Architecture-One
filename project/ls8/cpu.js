@@ -138,7 +138,11 @@ class CPU {
         const CALL = 0b01001000;
         const CMP = 0b10100000;
         const HLT = 0b00000001;
+        const JEQ = 0b01010001;
+        const JGT = 0b01010100;
+        const JLT = 0b01010011;
         const JMP = 0b01010000;
+        const JNE = 0b01010010;
         const LDI = 0b10011001;
         const MUL = 0b10101010;
         const POP = 0b01001100;
@@ -181,8 +185,40 @@ class CPU {
         
         const handle_HLT = () => this.stopClock();
 
+        const handle_JEQ = (register) => {
+            if (this.reg.FL === 0b00000001) {
+                handle_JMP(register);
+            } else {
+                this.reg.PC += 2;
+            };
+        };
+
+        const handle_JGT = (register) => {
+            if (this.reg.FL === 0b00000010) {
+                handle_JMP(register);
+            } else {
+                this.reg.PC += 2;
+            };
+        };
+
+        const handle_JLT = (register) => {
+            if (this.reg.FL === 0b00000100) {
+                handle_JMP(register);
+            } else {
+                this.reg.PC += 2;
+            };
+        };
+
         const handle_JMP = (register) => {
             this.reg.PC = this.reg[register];
+        };
+
+        const handle_JNE = (register) => {
+            if (this.reg.FL !== 0b00000001) {
+                handle_JMP(register);
+            } else {
+                this.reg.PC += 2;
+            };
         };
 
         const handle_LDI = (register, value) => {
@@ -242,7 +278,11 @@ class CPU {
             [CALL]: handle_CALL,
             [CMP]: handle_CMP,
             [HLT]: handle_HLT,
+            [JEQ]: handle_JEQ,
+            [JGT]: handle_JGT,
+            [JLT]: handle_JLT,
             [JMP]: handle_JMP,
+            [JNE]: handle_JNE,
             [LDI]: handle_LDI,
             [MUL]: handle_MUL,
             [POP]: handle_POP,
@@ -283,10 +323,14 @@ class CPU {
         // for any particular instruction.
         switch (IR) {
             case CALL:
+            case JEQ:
+            case JGT:
+            case JLT:
             case JMP:
+            case JNE:
             case RET:
               break;
-            default:
+            default:  // move PC for all commands that do not directly set it
               this.reg.PC += (IR >>> 6) + 1;
               break;
         };
